@@ -62,10 +62,16 @@
       </button>
     </section>
       <template v-if="tickers.length">
-      <hr class="w-full border-t border-gray-600 my-4" />
+      <div>
+        <hr class="w-full border-t border-gray-600 my-4" />
+        <button @click="page = page - 1" v-if="page > 1" class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Назад</button>
+        <button @click="page = page + 1" v-if="hasNextPage" class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Вперед</button>
+        Фильтр: <input v-model="filter" />
+        <hr class="w-full border-t border-gray-600 my-4" />
+      </div>
       <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div
-          v-for="t in tickers"
+          v-for="t in filteredTickers()"
           :key="t.name"
           @click="select(t)"
           :class="{
@@ -157,6 +163,9 @@ export default {
       sel: null,
       graph: [],
       coinList: [],
+      page: 1,
+      filter: '',
+      hasNextPage: true
     }
   },
   // created: async function () {
@@ -168,6 +177,17 @@ export default {
   //   }
   // },
   created(){
+
+    const windowData = Object.fromEntries(new URL(window.location).searchParams.entries());
+
+    if(windowData.filter) {
+      this.filter = windowData.filter;
+    }
+
+    if(windowData.page) {
+      this.page = windowData.page;
+    }
+
     const tickersData =  localStorage.getItem('cryptonomicon-list');
     if(tickersData){
       this.tickers = JSON.parse(tickersData);
@@ -184,18 +204,36 @@ export default {
     //   let arr = list.filter(t => t.FullName == this.ticker);
     //   console.log('coinListfind', arr)
     // }
+    filter() {
+      this.page = 1;
+      window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+    },
+    page() {
+      window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+    }
   },
   methods: {
+    filteredTickers() {
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+      const filteredTickers = this.tickers.filter(ticker => ticker.name.includes(this.filter));
+
+      console.log(filteredTickers.length, end)
+      this.hasNextPage = filteredTickers.length > end;
+
+      return filteredTickers.splice(start, end);
+    },
     subscribeToUpdates(tickerName){
       setInterval(async () => {
         const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
         const data = await f.json();
+
         this.tickers.find(t => t.name === tickerName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
-        if(this.sel?.name == tickerName){
+        if(this.sel?.name === tickerName){
           this.graph.push(data.USD);
         }
-      }, 3000);
+      }, 5000);
 
 
       this.ticker = '';
@@ -206,32 +244,8 @@ export default {
         price: '-'
       };
 
-      // let getData = async () => {
-
-      //   const getData = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
-      //   const checkData = await getData.json();
-
-      //   if(checkData.Response){
-      //     console.log('error');
-      //   } else{
-      //     setInterval(async () => {
-      //       const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
-      //       const data = await f.json();
-      //       console.log(data);
-
-      //       this.tickers.find(t => t.name === currentTicker.name).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-
-      //       if(this.sel?.name == currentTicker.name){
-      //         this.graph.push(data.USD);
-      //       }
-      //     }, 3000);
-      //     this.tickers.push(currentTicker);
-      //   }
-      // }
-
-      // getData();
-
       this.tickers.push(currentTicker);
+      this.filter = '';
 
       localStorage.setItem('cryptonomicon-list', JSON.stringify(this.tickers));
       this.subscribeToUpdates(currentTicker.name);
