@@ -1,4 +1,10 @@
 <template><div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
+  <!-- <div class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center">
+    <svg class="animate-spin -ml-1 mr-3 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  </div> -->
   <div class="container">
     <section>
       <div class="flex">
@@ -17,11 +23,11 @@
               placeholder="Например DOGE"
             />
           </div>
-          <!-- <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+          <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
             <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
               BTC
             </span>
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+            <!-- <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
               DOGE
             </span>
             <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
@@ -29,9 +35,9 @@
             </span>
             <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
               CHD
-            </span>
+            </span> -->
           </div>
-          <div class="text-sm text-red-600">Такой тикер уже добавлен</div> -->
+          <!-- <div class="text-sm text-red-600">Такой тикер уже добавлен</div> -->
         </div>
       </div>
       <button
@@ -144,47 +150,92 @@
 <script>
 export default {
   name: "App",
-
   data(){
     return {
       ticker: '',
       tickers: [],
       sel: null,
-      graph: []
+      graph: [],
+      coinList: [],
     }
   },
+  // created: async function () {
+  //   const data = await fetch('https://min-api.cryptocompare.com/data/all/coinlist?summary=true');
+  //   const d = await data.json();
+  //   let obj = d.Data
+  //   for(let ind in obj){
+  //     this.coinList.push(obj[ind])
+  //   }
+  // },
+  created(){
+    const tickersData =  localStorage.getItem('cryptonomicon-list');
+    if(tickersData){
+      this.tickers = JSON.parse(tickersData);
+      this.tickers.forEach(ticker => {
+        this.subscribeToUpdates(ticker.name)
+      })
+    }
+  },
+  watch: {
+    // ticker() {
+    //   console.log('this.ticker', this.ticker);
+    //   console.log('this.coinList', this.coinList);
+    //   let list = this.coinList;
+    //   let arr = list.filter(t => t.FullName == this.ticker);
+    //   console.log('coinListfind', arr)
+    // }
+  },
   methods: {
+    subscribeToUpdates(tickerName){
+      setInterval(async () => {
+        const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
+        const data = await f.json();
+        this.tickers.find(t => t.name === tickerName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+        if(this.sel?.name == tickerName){
+          this.graph.push(data.USD);
+        }
+      }, 3000);
+
+
+      this.ticker = '';
+    },
     add() {
       const currentTicker = {
         name: this.ticker,
         price: '-'
       };
 
-      let getData = async () => {
-        const getData = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
-        const checkData = await getData.json();
+      // let getData = async () => {
 
-        if(checkData.Response){
-          console.log('error');
-        } else{
-          setInterval(async () => {
-            const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
-            const data = await f.json();
-            console.log(data);
+      //   const getData = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
+      //   const checkData = await getData.json();
 
-            this.tickers.find(t => t.name === currentTicker.name).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+      //   if(checkData.Response){
+      //     console.log('error');
+      //   } else{
+      //     setInterval(async () => {
+      //       const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
+      //       const data = await f.json();
+      //       console.log(data);
 
-            if(this.sel?.name == currentTicker.name){
-              this.graph.push(data.USD);
-            }
-          }, 3000);
-          this.tickers.push(currentTicker);
-        }
-      }
+      //       this.tickers.find(t => t.name === currentTicker.name).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
-      getData();
+      //       if(this.sel?.name == currentTicker.name){
+      //         this.graph.push(data.USD);
+      //       }
+      //     }, 3000);
+      //     this.tickers.push(currentTicker);
+      //   }
+      // }
 
-      this.ticker = '';
+      // getData();
+
+      this.tickers.push(currentTicker);
+
+      localStorage.setItem('cryptonomicon-list', JSON.stringify(this.tickers));
+      this.subscribeToUpdates(currentTicker.name);
+
     },
     handleRemove(tickerToRemove){
       this.tickers = this.tickers.filter(t => t !== tickerToRemove);
