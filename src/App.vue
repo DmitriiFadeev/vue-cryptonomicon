@@ -71,7 +71,7 @@
       </div>
       <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div
-          v-for="t in filteredTickers()"
+          v-for="t in paginatedTickers"
           :key="t.name"
           @click="select(t)"
           :class="{
@@ -115,7 +115,7 @@
       </h3>
       <div class="flex items-end border-gray-600 border-b border-l h-64">
         <div
-          v-for="(bar, ind) in normalizeGraph()"
+          v-for="(bar, ind) in normalizedGraph"
           :key="ind"
           :style="{height: `${bar}%`}"
           class="bg-purple-800 border w-10"
@@ -164,8 +164,7 @@ export default {
       graph: [],
       coinList: [],
       page: 1,
-      filter: '',
-      hasNextPage: true
+      filter: ''
     }
   },
   // created: async function () {
@@ -212,17 +211,34 @@ export default {
       window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
     }
   },
-  methods: {
-    filteredTickers() {
-      const start = (this.page - 1) * 6;
-      const end = this.page * 6;
-      const filteredTickers = this.tickers.filter(ticker => ticker.name.includes(this.filter));
+  mounted() {
+    console.log('mounted');
+  },
 
-      console.log(filteredTickers.length, end)
-      this.hasNextPage = filteredTickers.length > end;
-
-      return filteredTickers.splice(start, end);
+  computed: {
+    startIndex() {
+      return (this.page - 1) * 6;
     },
+    endIndex() {
+      return this.page * 6;
+    },
+    filteredTickers() {
+      return this.tickers.filter(ticker => ticker.name.includes(this.filter));
+    },
+    paginatedTickers(){
+      return this.filteredTickers.splice(this.startIndex, this.endIndex);
+    },
+    hasNextPage() {
+      return this.filteredTickers.length > this.endIndex;
+    },
+    normalizedGraph(){
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+
+      return this.graph.map(price => 5 + ((price - minValue) * 95) / ( maxValue- minValue));
+    },
+  },
+  methods: {
     subscribeToUpdates(tickerName){
       setInterval(async () => {
         const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&21b64e903b2271943537101402e34097a16d92f4265662ba319299828567b1b9`);
@@ -253,13 +269,6 @@ export default {
     },
     handleRemove(tickerToRemove){
       this.tickers = this.tickers.filter(t => t !== tickerToRemove);
-    },
-
-    normalizeGraph(){
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-
-      return this.graph.map(price => 5 + ((price - minValue) * 95) / ( maxValue- minValue));
     },
     select(ticker) {
       this.sel = ticker;
